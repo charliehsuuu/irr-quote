@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#142438">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IRR報價機">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>IRR 報價機｜存貨售後買回試算</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#142438; --navy-deep:#0B1520; --navy-soft:#1D3350;
+    --gold:#C9973A; --gold-light:#E4C67A; --gold-dim:#8A6A2A;
+    --cream:#F7F3EA; --cream-dark:#EDE6D6; --paper:#FCFAF4;
+    --ink:#22303F; --ink-soft:#5B6B7C; --ink-faint:#93A0AC;
+    --rule:#DCD4C0; --rule-dark:#C7BCA0;
+    --green:#3F7A56; --green-bg:#E7F0E7;
+    --amber:#A9752B; --amber-bg:#F5ECD8;
+    --radius:14px;
+    --font-cjk:'Noto Sans TC',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--navy-deep);}
+  body{
+    font-family:var(--font-cjk);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding-bottom:48px;
+  }
+  .shell{max-width:520px;margin:0 auto;background:var(--cream);min-height:100vh;position:relative;}
+
+  /* ---------- Header ---------- */
+  header{
+    background:linear-gradient(165deg,var(--navy) 0%,var(--navy-deep) 100%);
+    padding:28px 22px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px; width:160px; height:160px;
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(201,151,58,0.16) 0%,transparent 70%);
+  }
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.16em;
+    color:var(--gold-light); text-transform:uppercase; opacity:.85;
+  }
+  h1{
+    color:#fff; font-size:22px; font-weight:900; margin:6px 0 2px;
+    letter-spacing:.02em;
+  }
+  .subtitle{color:#AEBACB; font-size:12.5px; margin:0;}
+  .case-note{
+    margin-top:16px; width:100%; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.14); border-radius:10px;
+    padding:10px 12px; color:#fff; font-size:13.5px; font-family:var(--font-cjk);
+  }
+  .case-note::placeholder{color:#8695A8;}
+
+  /* ---------- Tabs ---------- */
+  .tabbar{display:flex; padding:0 16px; margin-top:-14px; gap:8px; position:relative; z-index:2;}
+  .tab{
+    flex:1; text-align:center; padding:13px 6px 11px; border-radius:12px 12px 0 0;
+    font-weight:700; font-size:14.5px; cursor:pointer; user-select:none;
+    background:var(--cream-dark); color:var(--ink-soft);
+    border:1px solid var(--rule); border-bottom:none;
+    transition:background .15s, color .15s;
+  }
+  .tab.active{background:var(--paper); color:var(--navy);}
+  .tab .tab-sub{display:block; font-weight:400; font-size:10.5px; margin-top:2px; opacity:.75; font-family:var(--font-mono);}
+
+  main{padding:0 16px 8px;}
+
+  .card{
+    background:var(--paper); border:1px solid var(--rule); border-radius:var(--radius);
+    padding:18px 16px; margin-top:14px;
+    box-shadow:0 1px 0 rgba(0,0,0,0.02);
+  }
+  .card-title{
+    font-size:13px; font-weight:700; color:var(--navy); letter-spacing:.04em;
+    display:flex; align-items:center; gap:8px; margin-bottom:14px;
+  }
+  .card-title .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:13px; font-weight:500; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .field label .field-key{font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);}
+  .input-wrap{position:relative; display:flex; align-items:center;
+    border-bottom:1.5px solid var(--rule-dark); transition:border-color .15s;}
+  .input-wrap:focus-within{border-color:var(--gold);}
+  .input-wrap .prefix{font-family:var(--font-mono); color:var(--ink-faint); font-size:15px; padding-right:4px;}
+  .input-wrap .suffix{font-family:var(--font-mono); color:var(--ink-faint); font-size:13px; padding-left:6px; white-space:nowrap;}
+  input[type=text], input[type=number]{
+    flex:1; min-width:0; border:none; outline:none; background:transparent;
+    font-family:var(--font-mono); font-size:19px; font-weight:600; color:var(--ink);
+    padding:6px 2px; -moz-appearance:textfield;
+  }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input::placeholder{color:var(--ink-faint); font-weight:400;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:8px;}
+  .chip{
+    font-family:var(--font-mono); font-size:12.5px; font-weight:600;
+    padding:6px 12px; border-radius:20px; border:1px solid var(--rule-dark);
+    color:var(--ink-soft); background:var(--cream); cursor:pointer; user-select:none;
+  }
+  .chip.active{background:var(--navy); border-color:var(--navy); color:var(--gold-light);}
+
+  .hint{font-size:11.5px; color:var(--ink-faint); margin-top:6px; line-height:1.5;}
+
+  details.adv{margin-top:14px; border-top:1px dashed var(--rule); padding-top:12px;}
+  details.adv summary{
+    font-size:12.5px; color:var(--ink-soft); cursor:pointer; font-weight:600;
+    list-style:none; display:flex; align-items:center; gap:6px;
+  }
+  details.adv summary::-webkit-details-marker{display:none;}
+  details.adv summary::before{content:"▸"; color:var(--gold); transition:transform .15s;}
+  details.adv[open] summary::before{transform:rotate(90deg);}
+  details.adv .adv-body{margin-top:12px;}
+
+  /* ---------- Results ---------- */
+  .results{
+    background:var(--navy); border-radius:var(--radius); margin-top:16px;
+    padding:20px 16px 16px; color:#fff; position:relative; overflow:hidden;
+  }
+  .results-title{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--gold-light); opacity:.85; margin-bottom:14px;
+  }
+  .stair{display:flex; flex-direction:column; gap:0;}
+  .stair-row{
+    display:flex; align-items:center; gap:12px; padding:11px 0;
+    border-bottom:1px solid rgba(255,255,255,0.09);
+  }
+  .stair-row:last-child{border-bottom:none;}
+  .stair-bar-wrap{width:34px; height:40px; display:flex; align-items:flex-end; flex-shrink:0;}
+  .stair-bar{width:100%; border-radius:4px 4px 0 0; transition:height .3s ease;}
+  .stair-label{flex:1; min-width:0;}
+  .stair-label .name{font-size:13.5px; font-weight:700; color:#fff;}
+  .stair-label .desc{font-size:11px; color:#93A5BC; margin-top:1px;}
+  .stair-value{text-align:right;}
+  .stair-value .num{font-family:var(--font-mono); font-size:21px; font-weight:700; color:var(--gold-light); line-height:1;}
+  .stair-value .delta{font-family:var(--font-mono); font-size:11px; color:#7FBF98; margin-top:4px;}
+  .stair-value .delta.zero{color:#6B7A8C;}
+
+  .payment-callout{
+    margin-top:14px; padding-top:14px; border-top:1px dashed rgba(255,255,255,0.18);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .payment-callout .lbl{font-size:12.5px; color:#AEBACB;}
+  .payment-callout .val{font-family:var(--font-mono); font-size:22px; font-weight:700; color:#fff;}
+
+  #bonusBox .field label{color:#AEBACB;}
+  #bonusBox .field label .field-key{color:#6B7A8C;}
+  #bonusBox .input-wrap{border-bottom-color:rgba(255,255,255,0.28);}
+  #bonusBox input{color:#fff;}
+  #bonusBox input::placeholder{color:#5B6B7C;}
+  #bonusBox .suffix{color:#AEBACB;}
+  #bonusBox .val{font-size:26px;}
+
+  .warn-box{
+    margin-top:12px; background:rgba(201,151,58,0.14); border:1px solid rgba(201,151,58,0.35);
+    border-radius:10px; padding:10px 12px; font-size:12px; color:var(--gold-light); line-height:1.55;
+  }
+
+  /* ---------- Schedule table ---------- */
+  .sched-toggle{
+    margin-top:14px; text-align:center; padding:11px; border-radius:10px;
+    background:var(--cream-dark); color:var(--navy); font-weight:700; font-size:13px;
+    cursor:pointer; user-select:none; border:1px solid var(--rule);
+  }
+  .sched-wrap{margin-top:10px; display:none;}
+  .sched-wrap.open{display:block;}
+  .sched-scroll{overflow-x:auto; border:1px solid var(--rule); border-radius:10px; background:var(--paper);}
+  table.sched{border-collapse:collapse; width:100%; min-width:600px; font-family:var(--font-mono); font-size:11.5px;}
+  table.sched th{
+    position:sticky; top:0; background:var(--navy); color:var(--gold-light);
+    padding:8px 8px; text-align:right; font-weight:600; font-size:10.5px; white-space:nowrap;
+  }
+  table.sched th:first-child, table.sched td:first-child{text-align:center;}
+  table.sched td{padding:6px 8px; text-align:right; border-bottom:1px solid var(--rule); white-space:nowrap; color:var(--ink);}
+  table.sched tr:nth-child(even) td{background:var(--cream);}
+  table.sched tr.row-zero td{background:var(--cream-dark); font-weight:700; color:var(--navy); border-bottom:2px solid var(--gold);}
+
+  footer{padding:22px 16px 8px; text-align:center;}
+  footer p{font-size:10.5px; color:var(--ink-faint); line-height:1.6; font-family:var(--font-mono);}
+
+  .reset-btn{
+    display:block; width:100%; margin-top:14px; padding:12px; border-radius:10px;
+    background:transparent; border:1px solid var(--rule-dark); color:var(--ink-soft);
+    font-family:var(--font-cjk); font-size:13px; font-weight:600; cursor:pointer;
+  }
+
+  @media (min-width:521px){ body{padding:24px 0;} .shell{border-radius:20px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.35);} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="eyebrow">存貨售後買回 · 租賃報價試算</div>
+    <h1>IRR 報價機</h1>
+    <p class="subtitle">NET IRR ／ 實質1 IRR ／ 隱含2 IRR 三段式試算</p>
+    <input class="case-note" id="caseNote" type="text" placeholder="案號／客戶備註（選填，僅供你自己參考）">
+  </header>
+
+  <div class="tabbar">
+    <div class="tab active" data-mode="forward" id="tabForward">
+      正算
+      <span class="tab-sub">輸入每期還款 → 算三個IRR</span>
+    </div>
+    <div class="tab" data-mode="reverse" id="tabReverse">
+      反算
+      <span class="tab-sub">輸入目標NET IRR → 算每期還款</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>案件條件</div>
+
+      <div class="field">
+        <label>額度（起租金額）<span class="field-key">K2</span></label>
+        <div class="input-wrap"><span class="prefix">NT$</span>
+          <input type="text" inputmode="numeric" id="principal" placeholder="3,000,000">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>承作期間（月）<span class="field-key">→F69</span></label>
+        <div class="input-wrap"><span class="prefix">＃</span>
+          <input type="text" inputmode="numeric" id="periods" placeholder="60">
+          <span class="suffix">期</span>
+        </div>
+        <div class="chips" id="periodChips">
+          <div class="chip" data-v="12">12</div>
+          <div class="chip" data-v="18">18</div>
+          <div class="chip" data-v="24">24</div>
+          <div class="chip" data-v="30">30</div>
+          <div class="chip" data-v="36">36</div>
+          <div class="chip" data-v="42">42</div>
+          <div class="chip" data-v="48">48</div>
+          <div class="chip" data-v="54">54</div>
+          <div class="chip" data-v="60">60</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>手續費<span class="field-key">K4</span></label>
+        <div class="input-wrap"><span class="prefix">NT$</span>
+          <input type="text" inputmode="numeric" id="fee" placeholder="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>保證金<span class="field-key">F5</span></label>
+        <div class="input-wrap"><span class="prefix">NT$</span>
+          <input type="text" inputmode="numeric" id="deposit" placeholder="0">
+        </div>
+      </div>
+
+      <details class="adv">
+        <summary>進階設定：保證金運用利差假設</summary>
+        <div class="adv-body">
+          <div class="field">
+            <label>保證金運用收益率<span class="field-key">J5</span></label>
+            <div class="input-wrap">
+              <input type="text" inputmode="decimal" id="depositSpread" placeholder="2.76">
+              <span class="suffix">% / 年</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>資金成本率<span class="field-key">H5</span></label>
+            <div class="input-wrap">
+              <input type="text" inputmode="decimal" id="costOfFunds" placeholder="0">
+              <span class="suffix">% / 年</span>
+            </div>
+            <div class="hint">預設沿用原試算表假設（2.76% / 0%）。保證金每期收益＝保證金 ×（運用收益率－資金成本率）÷12，僅在該期仍有還本金額時認列。</div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" id="forwardOnlyCard">
+      <div class="card-title"><span class="dot"></span>每期還款金額（現金進出）</div>
+      <div class="field" style="margin-bottom:0">
+        <div class="input-wrap"><span class="prefix">NT$</span>
+          <input type="text" inputmode="numeric" id="payment" placeholder="58,500">
+        </div>
+        <div class="hint">對應原表「現金進出」欄位，每期金額固定（等額攤還）。</div>
+      </div>
+    </div>
+
+    <div class="card" id="reverseOnlyCard" style="display:none">
+      <div class="card-title"><span class="dot"></span>目標 NET IRR</div>
+      <div class="field" style="margin-bottom:0">
+        <div class="input-wrap">
+          <input type="text" inputmode="decimal" id="targetNetIrr" placeholder="6.36">
+          <span class="suffix">% / 年</span>
+        </div>
+        <div class="hint">輸入你要的年化 NET IRR，反算出等額每期還款金額；再依手續費、保證金算出實質1、隱含2 IRR。</div>
+      </div>
+    </div>
+
+    <div class="results" id="resultsBox">
+      <div class="results-title">試算結果</div>
+
+      <div class="stair" id="stair"></div>
+
+      <div class="payment-callout" id="paymentCallout" style="display:none">
+        <span class="lbl">每期還款金額（反算）</span>
+        <span class="val" id="solvedPayment">—</span>
+      </div>
+
+      <div class="warn-box" id="warnBox" style="display:none"></div>
+    </div>
+
+    <div class="results" id="bonusBox">
+      <div class="results-title">獎金 NPV 試算</div>
+      <div class="field" style="margin-bottom:16px">
+        <label>資金成本（銀行借款利率）<span class="field-key">FTP</span></label>
+        <div class="input-wrap">
+          <input type="text" inputmode="decimal" id="fundingCost" placeholder="2.9619">
+          <span class="suffix">% / 年</span>
+        </div>
+      </div>
+      <div class="payment-callout" style="border-top:1px dashed rgba(255,255,255,0.18); padding-top:14px; margin-top:0">
+        <span class="lbl">獎金 NPV</span>
+        <span class="val" id="bonusNpv" style="color:var(--gold-light)">—</span>
+      </div>
+      <div class="hint" id="bonusHint" style="color:#93A5BC; margin-top:10px">現金流＝手續費（撥款時淨額）＋每期還款（有保證金時，含保證金運用收益），用資金成本折現。這個利率很少調整，改過一次會記住，之後不用再輸入。</div>
+    </div>
+
+    <div class="sched-toggle" id="schedToggle">顯示每期攤還明細 ▾</div>
+    <div class="sched-wrap" id="schedWrap">
+      <div class="hint" style="margin-bottom:8px">第0期＝撥款日／起租日當天（尚未還款）；現金進出於第0期為撥款流出，第1期起為每期攤還本息。</div>
+      <div class="sched-scroll">
+        <table class="sched">
+          <thead>
+            <tr>
+              <th>期</th><th>現金進出</th><th>A/R餘額</th><th>本金餘額</th><th>還本</th><th>利息</th><th>保證金收益</th>
+            </tr>
+          </thead>
+          <tbody id="schedBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">清空重新輸入</button>
+  </main>
+
+  <footer>
+    <p>NET IRR＝原始現金流｜實質1 IRR＝＋手續費收益｜隱含2 IRR＝＋保證金運用收益<br>年化採月IRR×12（名目年利率），比照原始試算表換算方式</p>
+  </footer>
+</div>
+
+<script>
+/* ============ IRR calculation engine ============ */
+function npv(cashflows, rate){
+  let sum = 0;
+  for (let i = 0; i < cashflows.length; i++) sum += cashflows[i] / Math.pow(1 + rate, i);
+  return sum;
+}
+function irrBisect(cashflows, lo = -0.99, hi = 10, iters = 300){
+  let a = lo, b = hi, fa = npv(cashflows, a), fb = npv(cashflows, b);
+  if (fa * fb > 0){
+    let step = 0.005, prev = a, prevVal = fa, found = false;
+    for (let r = a + step; r <= b; r += step){
+      const val = npv(cashflows, r);
+      if (prevVal * val <= 0){ a = prev; b = r; found = true; break; }
+      prev = r; prevVal = val;
+    }
+    if (!found) return null;
+  }
+  for (let i = 0; i < iters; i++){
+    const mid = (a + b) / 2, fm = npv(cashflows, mid);
+    if (Math.abs(fm) < 1e-9) return mid;
+    if (npv(cashflows, a) * fm < 0) b = mid; else a = mid;
+  }
+  return (a + b) / 2;
+}
+
+function buildSchedule({ principal, downPayment = 0, fee = 0, deposit = 0, periods, payment, depositSpread = 0.0276, costOfFunds = 0 }){
+  const F9 = -principal + downPayment;
+  const F = [F9]; for (let i = 0; i < periods; i++) F.push(payment);
+  const netIRRmonthly = irrBisect(F);
+  const netIRR = netIRRmonthly === null ? null : netIRRmonthly * 12;
+
+  let Hprev = -F9;
+  const I = [], J = [];
+  for (let i = 0; i < periods; i++){
+    const interest = Hprev * (netIRR || 0) / 12;
+    const principalPaid = Math.round(payment - interest);
+    Hprev = Hprev - payment + interest;
+    I.push(principalPaid); J.push(interest);
+  }
+
+  const K9 = -principal + downPayment + fee;
+  const O = [K9]; for (let i = 0; i < periods; i++) O.push(payment);
+  const real1IRRmonthly = irrBisect(O);
+  const real1IRR = real1IRRmonthly === null ? null : real1IRRmonthly * 12;
+
+  const K8 = K9; // 撥款日＝起租日，無天數差調整
+  const L = I.map(v => v > 0 ? deposit * (depositSpread - costOfFunds) / 12 : 0);
+  const Q = [K8]; for (let i = 0; i < periods; i++) Q.push(payment + L[i]);
+  const implied2IRRmonthly = irrBisect(Q);
+  const implied2IRR = implied2IRRmonthly === null ? null : implied2IRRmonthly * 12;
+
+  // 本金餘額（H欄）：每一列顯示「當期還款後」的餘額（closing balance），對應原表 H10=-F9-F10+J10 的寫法
+  const openingPrincipal = -F9; // 期0（撥款日／起租日）當下的本金餘額
+  let bal = openingPrincipal;
+  const balances = [];
+  for (let i = 0; i < periods; i++){
+    bal = bal - payment + J[i];
+    balances.push(bal);
+  }
+
+  // A/R餘額（G欄）：期0＝TOT SALES（未貼現的還款總額，等額攤還下＝每期金額×期數），之後每期扣掉當期現金流，對應原表 G9=TOT SALES、G10=G9-F10
+  const totalSales = payment * periods;
+  let ar = totalSales;
+  const arBalances = [];
+  for (let i = 0; i < periods; i++){
+    ar = ar - payment;
+    arBalances.push(ar);
+  }
+
+  return { netIRR, real1IRR, implied2IRR, I, J, L, balances, openingPrincipal, totalSales, arBalances };
+}
+
+// 獎金NPV：手續費在撥款當下淨額入帳＋每期還款（含保證金運用收益）用資金成本（銀行借款利率）折現
+// 現金流結構跟隱含2 IRR的Q欄一樣（O+L），差別只在這裡是「用資金成本折現算現值」，不是拿去解IRR
+function calcBonusNPV({ principal, fee = 0, periods, payment, sched, fundingCostAnnual }){
+  const cf0 = -(principal - fee);
+  const r = fundingCostAnnual / 12;
+  let npvVal = cf0;
+  for (let i = 0; i < periods; i++){
+    const cf = payment + (sched.L[i] || 0);
+    npvVal += cf / Math.pow(1 + r, i + 1);
+  }
+  return npvVal;
+}
+
+function solvePaymentForNetIRR({ principal, downPayment = 0, periods, targetNetIRR }){
+  function netIRRFor(payment){
+    const F9 = -principal + downPayment;
+    const F = [F9]; for (let i = 0; i < periods; i++) F.push(payment);
+    const m = irrBisect(F);
+    return m === null ? null : m * 12;
+  }
+  let lo = 0, hi = Math.max(principal * 3, 1);
+  for (let i = 0; i < 100; i++){
+    const mid = (lo + hi) / 2;
+    const r = netIRRFor(mid);
+    if (r === null || r < targetNetIRR) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/* ============ UI logic ============ */
+const $ = id => document.getElementById(id);
+let mode = 'forward';
+
+function parseNum(str){
+  if (!str) return 0;
+  const n = parseFloat(String(str).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function formatMoney(n){
+  if (n === null || n === undefined || isNaN(n)) return '';
+  let r = Math.round(n);
+  if (r === 0) r = 0; // 修正 -0 顯示成 "-0" 的問題
+  return r.toLocaleString('en-US');
+}
+function formatPct(x){
+  if (x === null || x === undefined || isNaN(x)) return '—';
+  return (x * 100).toFixed(3) + '%';
+}
+
+// money inputs: format with commas on blur, allow raw typing on focus
+['principal','fee','deposit','payment'].forEach(id=>{
+  const el = $(id);
+  el.addEventListener('focus', ()=>{ el.value = el.value.replace(/,/g,''); });
+  el.addEventListener('blur', ()=>{
+    const n = parseNum(el.value);
+    el.value = n ? formatMoney(n) : '';
+    recalc();
+  });
+  el.addEventListener('input', recalc);
+});
+['periods','depositSpread','costOfFunds','targetNetIrr'].forEach(id=>{
+  $(id).addEventListener('input', recalc);
+});
+
+// funding cost（資金成本，獎金NPV折現用）— 很少調整，改過一次後用 localStorage 記住
+const FUNDING_COST_KEY = 'irrquote_fundingCost';
+const DEFAULT_FUNDING_COST = '2.9619';
+(function initFundingCost(){
+  let stored = null;
+  try { stored = localStorage.getItem(FUNDING_COST_KEY); } catch(e){}
+  $('fundingCost').value = (stored !== null && stored !== '') ? stored : DEFAULT_FUNDING_COST;
+})();
+$('fundingCost').addEventListener('input', ()=>{
+  try { localStorage.setItem(FUNDING_COST_KEY, $('fundingCost').value); } catch(e){}
+  recalc();
+});
+
+// period chips
+document.querySelectorAll('#periodChips .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    $('periods').value = chip.dataset.v;
+    document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    recalc();
+  });
+});
+$('periods').addEventListener('input', ()=>{
+  const v = $('periods').value;
+  document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.v === v));
+});
+
+// tabs
+function setMode(m){
+  mode = m;
+  $('tabForward').classList.toggle('active', m==='forward');
+  $('tabReverse').classList.toggle('active', m==='reverse');
+  $('forwardOnlyCard').style.display = m==='forward' ? '' : 'none';
+  $('reverseOnlyCard').style.display = m==='reverse' ? '' : 'none';
+  $('paymentCallout').style.display = m==='reverse' ? '' : 'none';
+  recalc();
+}
+$('tabForward').addEventListener('click', ()=>setMode('forward'));
+$('tabReverse').addEventListener('click', ()=>setMode('reverse'));
+
+// schedule toggle
+let schedOpen = false;
+$('schedToggle').addEventListener('click', ()=>{
+  schedOpen = !schedOpen;
+  $('schedWrap').classList.toggle('open', schedOpen);
+  $('schedToggle').textContent = schedOpen ? '收合每期攤還明細 ▴' : '顯示每期攤還明細 ▾';
+  if (schedOpen) recalc();
+});
+
+$('resetBtn').addEventListener('click', ()=>{
+  ['principal','fee','deposit','payment','targetNetIrr','caseNote'].forEach(id=>$(id).value='');
+  $('periods').value=''; $('depositSpread').value=''; $('costOfFunds').value='';
+  document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.remove('active'));
+  recalc();
+});
+
+function renderStair(netIRR, real1IRR, implied2IRR){
+  const rows = [
+    {name:'NET IRR', desc:'原始現金流', val:netIRR, h:34, color:'linear-gradient(180deg,#7A8CA3,#5B6B7C)'},
+    {name:'實質1 IRR', desc:'＋手續費收益', val:real1IRR, h:60, color:'linear-gradient(180deg,#D9A94A,#B8892F)'},
+    {name:'隱含2 IRR', desc:'＋保證金運用收益', val:implied2IRR, h:86, color:'linear-gradient(180deg,#E4C67A,#C9973A)'},
+  ];
+  let prev = null;
+  const html = rows.map(r=>{
+    let deltaHtml = '<span class="delta zero">基準</span>';
+    if (prev !== null && r.val !== null && prev !== null){
+      const d = r.val - prev;
+      deltaHtml = `<span class="delta ${d===0?'zero':''}">${d>=0?'+':''}${(d*100).toFixed(3)}%</span>`;
+    }
+    prev = r.val;
+    return `<div class="stair-row">
+      <div class="stair-bar-wrap"><div class="stair-bar" style="height:${r.h}px;background:${r.color}"></div></div>
+      <div class="stair-label"><div class="name">${r.name}</div><div class="desc">${r.desc}</div></div>
+      <div class="stair-value"><div class="num">${formatPct(r.val)}</div>${deltaHtml}</div>
+    </div>`;
+  }).join('');
+  $('stair').innerHTML = html;
+}
+
+function renderSchedule(sched, periods, payment){
+  if (!schedOpen) return;
+  let rows = '';
+  // 期0：撥款日／起租日（放款當天，尚未有還款）
+  rows += `<tr class="row-zero">
+    <td>0</td>
+    <td>${formatMoney(-sched.openingPrincipal)}</td>
+    <td>${formatMoney(sched.totalSales)}</td>
+    <td>${formatMoney(sched.openingPrincipal)}</td>
+    <td>—</td>
+    <td>—</td>
+    <td>—</td>
+  </tr>`;
+  for (let i=0;i<periods;i++){
+    rows += `<tr>
+      <td>${i+1}</td>
+      <td>${formatMoney(payment)}</td>
+      <td>${formatMoney(sched.arBalances[i])}</td>
+      <td>${formatMoney(sched.balances[i])}</td>
+      <td>${formatMoney(sched.I[i])}</td>
+      <td>${formatMoney(sched.J[i])}</td>
+      <td>${sched.L[i] ? formatMoney(sched.L[i]) : '—'}</td>
+    </tr>`;
+  }
+  $('schedBody').innerHTML = rows;
+}
+
+function recalc(){
+  const principal = parseNum($('principal').value);
+  const downPayment = 0;
+  const fee = parseNum($('fee').value);
+  const deposit = parseNum($('deposit').value);
+  const periods = Math.round(parseNum($('periods').value));
+  const depositSpread = ($('depositSpread').value ? parseNum($('depositSpread').value) : 2.76) / 100;
+  const costOfFunds = ($('costOfFunds').value ? parseNum($('costOfFunds').value) : 0) / 100;
+  const fundingCostAnnual = (($('fundingCost').value ? parseNum($('fundingCost').value) : parseNum(DEFAULT_FUNDING_COST))) / 100;
+
+  $('warnBox').style.display = 'none';
+
+  if (!principal || !periods || periods < 1){
+    renderStair(null,null,null);
+    $('schedBody').innerHTML = '';
+    $('bonusNpv').textContent = '—';
+    return;
+  }
+
+  let payment;
+  if (mode === 'forward'){
+    payment = parseNum($('payment').value);
+    if (!payment){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent = '—'; return; }
+  } else {
+    const targetPct = $('targetNetIrr').value;
+    if (!targetPct){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent = '—'; return; }
+    const targetNetIRR = parseNum(targetPct) / 100;
+    payment = solvePaymentForNetIRR({ principal, downPayment, periods, targetNetIRR });
+    $('solvedPayment').textContent = 'NT$ ' + formatMoney(payment);
+  }
+
+  const sched = buildSchedule({ principal, downPayment, fee, deposit, periods, payment, depositSpread, costOfFunds });
+
+  if (sched.netIRR === null || sched.real1IRR === null || sched.implied2IRR === null){
+    $('warnBox').style.display = 'block';
+    $('warnBox').textContent = '這組條件目前算不出收斂的 IRR，請檢查每期還款金額是否合理（例如是否小於每期利息）。';
+    renderStair(null,null,null);
+    $('bonusNpv').textContent = '—';
+    return;
+  }
+
+  renderStair(sched.netIRR, sched.real1IRR, sched.implied2IRR);
+  renderSchedule(sched, periods, payment);
+
+  const bonusNpv = calcBonusNPV({ principal, fee, periods, payment, sched, fundingCostAnnual });
+  $('bonusNpv').textContent = 'NT$ ' + formatMoney(bonusNpv);
+}
+
+setMode('forward');
+recalc();
+
+/* ============ PWA: service worker ============ */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

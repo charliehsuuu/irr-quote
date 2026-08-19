@@ -1,0 +1,18 @@
+{
+  "name": "IRR 報價機｜存貨售後買回試算",
+  "short_name": "IRR報價機",
+  "description": "存貨售後買回租賃報價試算：NET IRR、實質1 IRR、隱含2 IRR 正算與反算",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1520",
+  "theme_color": "#142438",
+  "lang": "zh-TW",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
