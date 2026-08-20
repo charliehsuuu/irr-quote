@@ -236,8 +236,9 @@
 
       <div class="field">
         <label>額度（起租金額）<span class="field-key">K2</span></label>
-        <div class="input-wrap"><span class="prefix">NT$</span>
-          <input type="text" inputmode="numeric" id="principal" placeholder="3,000,000">
+        <div class="input-wrap">
+          <input type="text" inputmode="numeric" id="principal" placeholder="1,000">
+          <span class="suffix">萬元</span>
         </div>
       </div>
 
@@ -253,9 +254,7 @@
           <div class="chip" data-v="24">24</div>
           <div class="chip" data-v="30">30</div>
           <div class="chip" data-v="36">36</div>
-          <div class="chip" data-v="42">42</div>
           <div class="chip" data-v="48">48</div>
-          <div class="chip" data-v="54">54</div>
           <div class="chip" data-v="60">60</div>
         </div>
       </div>
@@ -503,7 +502,7 @@ function formatPct(x){
 }
 
 // money inputs: format with commas on blur, allow raw typing on focus
-['principal','fee','deposit','payment'].forEach(id=>{
+['fee','deposit','payment'].forEach(id=>{
   const el = $(id);
   el.addEventListener('focus', ()=>{ el.value = el.value.replace(/,/g,''); });
   el.addEventListener('blur', ()=>{
@@ -513,6 +512,17 @@ function formatPct(x){
   });
   el.addEventListener('input', recalc);
 });
+// 額度（萬元）：blur時加千分位，但顯示的是萬元數字（例如1,000 = 1000萬）
+(function(){
+  const el = $('principal');
+  el.addEventListener('focus', ()=>{ el.value = el.value.replace(/,/g,''); });
+  el.addEventListener('blur', ()=>{
+    const n = parseNum(el.value);
+    el.value = n ? formatMoney(n) : '';
+    recalc();
+  });
+  el.addEventListener('input', recalc);
+})();
 ['periods','targetNetIrr'].forEach(id=>{
   $(id).addEventListener('input', recalc);
 });
@@ -644,7 +654,7 @@ function renderSchedule(sched, periods, payment){
 }
 
 function recalc(){
-  const principal = parseNum($('principal').value);
+  const principal = parseNum($('principal').value) * 10000;
   const downPayment = 0;
   const fee = parseNum($('fee').value);
   const deposit = parseNum($('deposit').value);
