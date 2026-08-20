@@ -195,6 +195,7 @@
   table.sched td{padding:6px 8px; text-align:right; border-bottom:1px solid var(--rule); white-space:nowrap; color:var(--ink);}
   table.sched tr:nth-child(even) td{background:var(--cream);}
   table.sched tr.row-zero td{background:var(--cream-dark); font-weight:700; color:var(--navy); border-bottom:2px solid var(--gold);}
+  table.sched tr.row-total td{background:var(--navy); color:var(--gold-light); font-weight:700; border-top:2px solid var(--gold); position:sticky; bottom:0;}
 
   footer{padding:22px 16px 8px; text-align:center;}
   footer p{font-size:10.5px; color:var(--ink-faint); line-height:1.6; font-family:var(--font-mono);}
@@ -354,12 +355,12 @@
 
     <div class="sched-toggle" id="schedToggle">顯示每期攤還明細 ▾</div>
     <div class="sched-wrap" id="schedWrap">
-      <div class="hint" style="margin-bottom:8px">第0期＝撥款日／起租日當天（尚未還款）；現金進出於第0期為撥款流出，第1期起為每期攤還本息。</div>
+      <div class="hint" style="margin-bottom:8px">第0期＝撥款日／起租日當天（尚未還款）；第1期起為每期攤還本息。</div>
       <div class="sched-scroll">
         <table class="sched">
           <thead>
             <tr>
-              <th>期</th><th>現金進出</th><th>A/R餘額</th><th>本金餘額</th><th>還本</th><th>利息</th><th>保證金收益</th>
+              <th>期</th><th>每期還款金額</th><th>A/R餘額</th><th>本金餘額</th><th>還本</th><th>利息</th><th>保證金收益</th>
             </tr>
           </thead>
           <tbody id="schedBody"></tbody>
@@ -625,6 +626,20 @@ function renderSchedule(sched, periods, payment){
       <td>${sched.L[i] ? formatMoney(sched.L[i]) : '—'}</td>
     </tr>`;
   }
+  // 合計列
+  const totalPayment = payment * periods;
+  const totalI = sched.I.reduce((a,b)=>a+b, 0);
+  const totalJ = sched.J.reduce((a,b)=>a+b, 0);
+  const totalL = sched.L.reduce((a,b)=>a+b, 0);
+  rows += `<tr class="row-total">
+    <td>合計</td>
+    <td>${formatMoney(totalPayment)}</td>
+    <td></td>
+    <td></td>
+    <td>${formatMoney(totalI)}</td>
+    <td>${formatMoney(totalJ)}</td>
+    <td>${totalL ? formatMoney(totalL) : '—'}</td>
+  </tr>`;
   $('schedBody').innerHTML = rows;
 }
 
