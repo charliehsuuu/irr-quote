@@ -71,7 +71,7 @@
   .tabbar{display:flex; padding:0 16px; margin-top:-14px; gap:8px; position:relative; z-index:2;}
   .tab{
     flex:1; text-align:center; padding:13px 6px 11px; border-radius:12px 12px 0 0;
-    font-weight:700; font-size:14.5px; cursor:pointer; user-select:none;
+    font-weight:700; font-size:13.5px; cursor:pointer; user-select:none;
     background:var(--cream-dark); color:var(--ink-soft);
     border:1px solid var(--rule); border-bottom:none;
     transition:background .15s, color .15s;
@@ -222,11 +222,15 @@
   <div class="tabbar">
     <div class="tab active" data-mode="forward" id="tabForward">
       正算
-      <span class="tab-sub">輸入每期還款 → 算三個IRR</span>
+      <span class="tab-sub">等額攤還 → 算IRR</span>
     </div>
     <div class="tab" data-mode="reverse" id="tabReverse">
       反算
-      <span class="tab-sub">輸入目標NET IRR → 算每期還款</span>
+      <span class="tab-sub">目標IRR → 算每期還款</span>
+    </div>
+    <div class="tab" data-mode="balloon" id="tabBalloon">
+      頭小尾大
+      <span class="tab-sub">前期小額＋尾期大額</span>
     </div>
   </div>
 
@@ -316,6 +320,25 @@
       </div>
     </div>
 
+    <div class="card" id="balloonOnlyCard" style="display:none">
+      <div class="card-title"><span class="dot"></span>頭小尾大設定</div>
+      <div class="field">
+        <label>前期每期還款金額（第1～N-1期）</label>
+        <div class="input-wrap"><span class="prefix">NT$</span>
+          <input type="text" inputmode="numeric" id="balloonSmallPmt" placeholder="260,000">
+        </div>
+        <div class="hint">客戶前面每期固定付的金額（含利息＋少量本金）。</div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>目標 NET IRR</label>
+        <div class="input-wrap">
+          <input type="text" inputmode="decimal" id="balloonNetIrr" placeholder="11.34">
+          <span class="suffix">% / 年</span>
+        </div>
+        <div class="hint">App會用這個利率逐期攤出利息與還本，算出最後一期balloon金額。</div>
+      </div>
+    </div>
+
     <div class="results" id="resultsBox">
       <div class="results-title">試算結果</div>
 
@@ -324,6 +347,11 @@
       <div class="payment-callout" id="paymentCallout" style="display:none">
         <span class="lbl">每期還款金額（反算）</span>
         <span class="val" id="solvedPayment">—</span>
+      </div>
+
+      <div class="payment-callout" id="balloonCallout" style="display:none">
+        <span class="lbl">最後一期（balloon）</span>
+        <span class="val" id="balloonAmount">—</span>
       </div>
 
       <div class="warn-box" id="warnBox" style="display:none"></div>
@@ -448,17 +476,69 @@ function buildSchedule({ principal, downPayment = 0, fee = 0, deposit = 0, perio
   return { netIRR, real1IRR, implied2IRR, I, J, L, balances, openingPrincipal, totalSales, arBalances };
 }
 
+// 頭小尾大模式：用給定的NET IRR逐期攤出利息/還本，算出最後一期balloon金額，再算實質1/隱含2/NPV
+function buildBalloonSchedule({ principal, fee = 0, deposit = 0, periods, smallPmt, netIRRAnnual, depositSpread = 0.030563, costOfFunds = 0 }){
+  const monthlyRate = netIRRAnnual / 12;
+  let bal = principal;
+  const payments = [], I = [], J = [], balances = [];
+
+  for (let i = 0; i < periods - 1; i++){
+    const interest = bal * monthlyRate;
+    const principalPaid = smallPmt - interest;
+    payments.push(smallPmt);
+    J.push(interest);
+    I.push(Math.round(principalPaid));
+    bal = bal - principalPaid;
+    balances.push(bal);
+  }
+
+  // 最後一期：用精確餘額算，不受前面round累積誤差影響
+  const lastInterest = bal * monthlyRate;
+  const balloon = Math.round(bal + lastInterest);
+  payments.push(balloon);
+  J.push(lastInterest);
+  I.push(Math.round(bal));
+  balances.push(0);
+
+  // 驗算：用完整現金流重新解IRR（應該跟輸入的netIRRAnnual一致）
+  const cfs_net = [-principal].concat(payments);
+  const netIRR = irrBisect(cfs_net) * 12;
+
+  // 實質1 IRR
+  const cfs_real1 = [-(principal - fee)].concat(payments);
+  const real1IRR = irrBisect(cfs_real1) * 12;
+
+  // 保證金收益（每期，只要該期有還本）
+  const L = I.map(v => v > 0 ? deposit * (depositSpread - costOfFunds) / 12 : 0);
+
+  // 隱含2 IRR
+  const cfs_implied2 = [-(principal - fee)].concat(payments.map((p, i) => p + L[i]));
+  const implied2IRR = irrBisect(cfs_implied2) * 12;
+
+  // A/R餘額
+  const totalSales = payments.reduce((a, b) => a + b, 0);
+  let ar = totalSales;
+  const arBalances = [];
+  for (let i = 0; i < periods; i++){
+    ar -= payments[i];
+    arBalances.push(ar);
+  }
+
+  return { netIRR, real1IRR, implied2IRR, I, J, L, balances, payments, balloon, openingPrincipal: principal, totalSales, arBalances };
+}
+
 // 獎金NPV：手續費在撥款當下淨額入帳＋每期還款（含保證金運用收益，用「NPV專用」的保證金利差，跟隱含2 IRR用的利差是分開的兩組假設）用資金成本（銀行借款利率）折現
 // 校準常數：公司系統的獎金NPV，只要保證金>0，會比「純利差折現」多出一個固定小額（用5組不同保證金金額、其餘條件相同的真實案例回歸校準出來，跟保證金金額大小無關）
 const DEPOSIT_NPV_OFFSET = 3514.21;
 
-function calcBonusNPV({ principal, fee = 0, periods, payment, sched, fundingCostAnnual, deposit = 0, npvDepositSpread = 0.026637, costOfFunds = 0 }){
+function calcBonusNPV({ principal, fee = 0, periods, payment, payments, sched, fundingCostAnnual, deposit = 0, npvDepositSpread = 0.026637, costOfFunds = 0 }){
   const cf0 = -(principal - fee);
   const r = fundingCostAnnual / 12;
   let npvVal = cf0;
   for (let i = 0; i < periods; i++){
+    const pmt_i = payments ? payments[i] : payment;
     const depositBenefit = sched.I[i] > 0 ? deposit * (npvDepositSpread - costOfFunds) / 12 : 0;
-    const cf = payment + depositBenefit;
+    const cf = pmt_i + depositBenefit;
     npvVal += cf / Math.pow(1 + r, i + 1);
   }
   if (deposit > 0) npvVal += DEPOSIT_NPV_OFFSET;
@@ -502,7 +582,7 @@ function formatPct(x){
 }
 
 // money inputs: format with commas on blur, allow raw typing on focus
-['fee','deposit','payment'].forEach(id=>{
+['fee','deposit','payment','balloonSmallPmt'].forEach(id=>{
   const el = $(id);
   el.addEventListener('focus', ()=>{ el.value = el.value.replace(/,/g,''); });
   el.addEventListener('blur', ()=>{
@@ -523,7 +603,7 @@ function formatPct(x){
   });
   el.addEventListener('input', recalc);
 })();
-['periods','targetNetIrr'].forEach(id=>{
+['periods','targetNetIrr','balloonNetIrr'].forEach(id=>{
   $(id).addEventListener('input', recalc);
 });
 
@@ -565,13 +645,17 @@ function setMode(m){
   mode = m;
   $('tabForward').classList.toggle('active', m==='forward');
   $('tabReverse').classList.toggle('active', m==='reverse');
+  $('tabBalloon').classList.toggle('active', m==='balloon');
   $('forwardOnlyCard').style.display = m==='forward' ? '' : 'none';
   $('reverseOnlyCard').style.display = m==='reverse' ? '' : 'none';
+  $('balloonOnlyCard').style.display = m==='balloon' ? '' : 'none';
   $('paymentCallout').style.display = m==='reverse' ? '' : 'none';
+  $('balloonCallout').style.display = m==='balloon' ? '' : 'none';
   recalc();
 }
 $('tabForward').addEventListener('click', ()=>setMode('forward'));
 $('tabReverse').addEventListener('click', ()=>setMode('reverse'));
+$('tabBalloon').addEventListener('click', ()=>setMode('balloon'));
 
 // schedule toggle
 let schedOpen = false;
@@ -583,7 +667,7 @@ $('schedToggle').addEventListener('click', ()=>{
 });
 
 $('resetBtn').addEventListener('click', ()=>{
-  ['principal','fee','deposit','payment','targetNetIrr','caseNote'].forEach(id=>$(id).value='');
+  ['principal','fee','deposit','payment','targetNetIrr','caseNote','balloonSmallPmt','balloonNetIrr'].forEach(id=>$(id).value='');
   $('periods').value='';
   document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.remove('active'));
   recalc();
@@ -614,8 +698,8 @@ function renderStair(netIRR, real1IRR, implied2IRR){
 
 function renderSchedule(sched, periods, payment){
   if (!schedOpen) return;
+  const pmts = sched.payments || null; // balloon mode has per-period array
   let rows = '';
-  // 期0：撥款日／起租日（放款當天，尚未有還款）
   rows += `<tr class="row-zero">
     <td>0</td>
     <td>${formatMoney(-sched.openingPrincipal)}</td>
@@ -626,9 +710,10 @@ function renderSchedule(sched, periods, payment){
     <td>—</td>
   </tr>`;
   for (let i=0;i<periods;i++){
+    const pmt_i = pmts ? pmts[i] : payment;
     rows += `<tr>
       <td>${i+1}</td>
-      <td>${formatMoney(payment)}</td>
+      <td>${formatMoney(pmt_i)}</td>
       <td>${formatMoney(sched.arBalances[i])}</td>
       <td>${formatMoney(sched.balances[i])}</td>
       <td>${formatMoney(sched.I[i])}</td>
@@ -636,8 +721,7 @@ function renderSchedule(sched, periods, payment){
       <td>${sched.L[i] ? formatMoney(sched.L[i]) : '—'}</td>
     </tr>`;
   }
-  // 合計列
-  const totalPayment = payment * periods;
+  const totalPayment = pmts ? pmts.reduce((a,b)=>a+b,0) : payment * periods;
   const totalI = sched.I.reduce((a,b)=>a+b, 0);
   const totalJ = sched.J.reduce((a,b)=>a+b, 0);
   const totalL = sched.L.reduce((a,b)=>a+b, 0);
@@ -673,7 +757,27 @@ function recalc(){
     return;
   }
 
-  let payment;
+  let payment, sched;
+  if (mode === 'balloon'){
+    const smallPmt = parseNum($('balloonSmallPmt').value);
+    const netIrrPct = $('balloonNetIrr').value;
+    if (!smallPmt || !netIrrPct){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent='—'; $('balloonAmount').textContent='—'; return; }
+    const netIRRAnnual = parseNum(netIrrPct) / 100;
+    if (netIRRAnnual <= 0){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent='—'; $('balloonAmount').textContent='—'; return; }
+    sched = buildBalloonSchedule({ principal, fee, deposit, periods, smallPmt, netIRRAnnual, depositSpread, costOfFunds });
+    if (sched.netIRR === null || sched.real1IRR === null || sched.implied2IRR === null){
+      $('warnBox').style.display = 'block';
+      $('warnBox').textContent = '這組條件算不出收斂的IRR，請檢查前期金額是否合理（需大於每期利息）。';
+      renderStair(null,null,null); $('bonusNpv').textContent='—'; $('balloonAmount').textContent='—'; return;
+    }
+    $('balloonAmount').textContent = 'NT$ ' + formatMoney(sched.balloon);
+    renderStair(sched.netIRR, sched.real1IRR, sched.implied2IRR);
+    renderSchedule(sched, periods, null);
+    const bonusNpv = calcBonusNPV({ principal, fee, periods, payments: sched.payments, sched, fundingCostAnnual, deposit, npvDepositSpread, costOfFunds });
+    $('bonusNpv').textContent = 'NT$ ' + formatMoney(bonusNpv);
+    return;
+  }
+
   if (mode === 'forward'){
     payment = parseNum($('payment').value);
     if (!payment){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent = '—'; return; }
@@ -685,7 +789,7 @@ function recalc(){
     $('solvedPayment').textContent = 'NT$ ' + formatMoney(payment);
   }
 
-  const sched = buildSchedule({ principal, downPayment, fee, deposit, periods, payment, depositSpread, costOfFunds });
+  sched = buildSchedule({ principal, downPayment, fee, deposit, periods, payment, depositSpread, costOfFunds });
 
   if (sched.netIRR === null || sched.real1IRR === null || sched.implied2IRR === null){
     $('warnBox').style.display = 'block';
