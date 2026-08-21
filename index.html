@@ -369,7 +369,7 @@
       <div class="field" style="margin-bottom:16px">
         <label>保證金運用利差（NPV專用）<span class="field-key">NPV-J5</span></label>
         <div class="input-wrap">
-          <input type="text" inputmode="decimal" id="npvDepositSpread" placeholder="2.6637">
+          <input type="text" inputmode="decimal" id="npvDepositSpread" placeholder="2.8051">
           <span class="suffix">% / 年</span>
         </div>
       </div>
@@ -377,7 +377,7 @@
         <span class="lbl">獎金 NPV</span>
         <span class="val" id="bonusNpv" style="color:var(--gold-light)">—</span>
       </div>
-      <div class="hint" id="bonusHint" style="color:#93A5BC; margin-top:10px">現金流＝手續費（撥款時淨額）＋每期還款（有保證金時，含保證金運用收益，用上面這組專屬利差算，跟「進階設定」裡給隱含2 IRR用的利差是分開的兩組假設；有保證金時還會再加NT$3,514的固定校準項）。用18/24/36期、不同額度規模、標準手續費比例（額度×年數×1%）共8組真實案例整體校準，實務常見組合誤差約在±0.6%內。這些數字都很少調整，改過一次會記住，之後不用再輸入。</div>
+      <div class="hint" id="bonusHint" style="color:#93A5BC; margin-top:10px">現金流＝手續費（撥款時淨額）＋每期還款（有保證金時，含保證金運用收益，用上面這組專屬利差算，跟「進階設定」裡給隱含2 IRR用的利差是分開的兩組假設；有保證金時還會再加一筆依額度規模調整的固定校準項）。用18/24/36期、額度600萬～3000萬、標準手續費比例共9組真實案例整體校準，實務常見組合誤差約在±1%內。這些數字都很少調整，改過一次會記住，之後不用再輸入。</div>
     </div>
 
     <div class="sched-toggle" id="schedToggle">顯示每期攤還明細 ▾</div>
@@ -528,10 +528,12 @@ function buildBalloonSchedule({ principal, fee = 0, deposit = 0, periods, smallP
 }
 
 // 獎金NPV：手續費在撥款當下淨額入帳＋每期還款（含保證金運用收益，用「NPV專用」的保證金利差，跟隱含2 IRR用的利差是分開的兩組假設）用資金成本（銀行借款利率）折現
-// 校準常數：公司系統的獎金NPV，只要保證金>0，會比「純利差折現」多出一個固定小額（用5組不同保證金金額、其餘條件相同的真實案例回歸校準出來，跟保證金金額大小無關）
-const DEPOSIT_NPV_OFFSET = 3514.21;
+// NPV校準常數（用9組真實案例回歸：額度600萬~3000萬、18/24/36期、各種保證金水位）
+// 保證金貢獻 = spread * deposit/12 * annuity_factor + per_M * (principal/1e6) + const
+const DEPOSIT_NPV_OFFSET_CONST = 5072.91;
+const DEPOSIT_NPV_OFFSET_PER_M = -564.32;
 
-function calcBonusNPV({ principal, fee = 0, periods, payment, payments, sched, fundingCostAnnual, deposit = 0, npvDepositSpread = 0.026637, costOfFunds = 0 }){
+function calcBonusNPV({ principal, fee = 0, periods, payment, payments, sched, fundingCostAnnual, deposit = 0, npvDepositSpread = 0.028051, costOfFunds = 0 }){
   const cf0 = -(principal - fee);
   const r = fundingCostAnnual / 12;
   let npvVal = cf0;
@@ -541,7 +543,7 @@ function calcBonusNPV({ principal, fee = 0, periods, payment, payments, sched, f
     const cf = pmt_i + depositBenefit;
     npvVal += cf / Math.pow(1 + r, i + 1);
   }
-  if (deposit > 0) npvVal += DEPOSIT_NPV_OFFSET;
+  if (deposit > 0) npvVal += DEPOSIT_NPV_OFFSET_CONST + DEPOSIT_NPV_OFFSET_PER_M * (principal / 1e6);
   return npvVal;
 }
 
@@ -612,7 +614,7 @@ const PERSISTED_FIELDS = {
   fundingCost:      { key: 'irrquote_fundingCost',      default: '2.9619' },
   depositSpread:    { key: 'irrquote_depositSpread',    default: '3.0563'   },
   costOfFunds:      { key: 'irrquote_costOfFunds',      default: '0'      },
-  npvDepositSpread: { key: 'irrquote_npvDepositSpread', default: '2.6637'   }
+  npvDepositSpread: { key: 'irrquote_npvDepositSpread', default: '2.8051'   }
 };
 Object.keys(PERSISTED_FIELDS).forEach(id=>{
   const cfg = PERSISTED_FIELDS[id];
