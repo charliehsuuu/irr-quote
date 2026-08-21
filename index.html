@@ -295,7 +295,7 @@
               <input type="text" inputmode="decimal" id="costOfFunds" placeholder="0">
               <span class="suffix">% / 年</span>
             </div>
-            <div class="hint">預設沿用原試算表假設（2.76% / 0%）。保證金每期收益＝保證金 ×（運用收益率－資金成本率）÷12，僅在該期仍有還本金額時認列。</div>
+            <div class="hint">預設為目前的校準假設（3.0563% / 0%）。保證金每期收益＝保證金 ×（運用收益率－資金成本率）÷12，僅在該期仍有還本金額時認列。</div>
           </div>
         </div>
       </details>
@@ -436,7 +436,7 @@ function irrBisect(cashflows, lo = -0.99, hi = 10, iters = 300){
   return (a + b) / 2;
 }
 
-function buildSchedule({ principal, downPayment = 0, fee = 0, deposit = 0, periods, payment, depositSpread = 0.0276, costOfFunds = 0 }){
+function buildSchedule({ principal, downPayment = 0, fee = 0, deposit = 0, periods, payment, depositSpread = 0.030563, costOfFunds = 0 }){
   const F9 = -principal + downPayment;
   const F = [F9]; for (let i = 0; i < periods; i++) F.push(payment);
   const netIRRmonthly = irrBisect(F);
