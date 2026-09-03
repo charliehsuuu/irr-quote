@@ -208,7 +208,83 @@
     font-family:var(--font-cjk); font-size:13px; font-weight:600; cursor:pointer;
   }
 
+  /* ---------- 分階段還款 ---------- */
+  .seg{display:flex; gap:6px; background:var(--cream-dark); border:1px solid var(--rule); border-radius:10px; padding:4px; margin-bottom:14px;}
+  .seg-btn{flex:1; text-align:center; padding:8px 6px; border-radius:7px; font-size:13px; font-weight:700;
+    color:var(--ink-soft); cursor:pointer; user-select:none; transition:background .15s,color .15s;}
+  .seg-btn.active{background:var(--navy); color:var(--gold-light);}
+
+  .stage-head{display:grid; grid-template-columns:1fr 1fr 1.5fr 28px; gap:8px; padding:0 2px 6px;
+    font-size:11px; color:var(--ink-faint); font-weight:600;}
+  .stage-head span:nth-child(3){text-align:right;}
+  .stage-row{display:grid; grid-template-columns:1fr 1fr 1.5fr 28px; gap:8px; align-items:center; margin-bottom:8px;}
+  .stage-row .sc{border-bottom:1.5px solid var(--rule-dark); display:flex; align-items:center; min-width:0;}
+  .stage-row .sc:focus-within{border-color:var(--gold);}
+  .stage-row input{font-size:15px; padding:5px 2px; text-align:center; width:100%; min-width:0;}
+  .stage-row .sc.amt input{text-align:right;}
+  .stage-del{width:28px; height:28px; border:1px solid var(--rule-dark); border-radius:7px; background:var(--cream);
+    color:var(--ink-faint); font-size:15px; line-height:1; cursor:pointer; padding:0;}
+  .stage-del:hover{color:#B4453A; border-color:#B4453A;}
+  .stage-untaxed{grid-column:1 / -1; min-width:0; text-align:right; font-family:var(--font-mono); font-size:10.5px;
+    color:var(--ink-faint); margin:-4px 30px 2px 0;}
+  .stage-add{width:100%; margin-top:2px; padding:9px; border-radius:9px; border:1px dashed var(--rule-dark);
+    background:transparent; color:var(--ink-soft); font-family:var(--font-cjk); font-size:12.5px; font-weight:600; cursor:pointer;}
+  .stage-summary{margin-top:12px; padding-top:10px; border-top:1px dashed var(--rule);
+    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); line-height:1.7;}
+  .stage-summary b{color:var(--navy);}
+  .stage-warn{margin-top:10px; background:#FBEDEA; border:1px solid #E0B4AC; border-radius:9px;
+    padding:9px 11px; font-size:12px; color:#8E3A2E; line-height:1.55;}
+
+  /* ---------- 桌機雙欄佈局 ---------- */
+  .col-left, .col-right, .col-full{display:contents;}
+
   @media (min-width:521px){ body{padding:24px 0;} .shell{border-radius:20px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.35);} }
+
+  @media (min-width:1000px){
+    body{padding:28px 0;}
+    .shell{max-width:1300px;}
+    header{padding:32px 34px 26px;}
+    h1{font-size:27px;}
+    .subtitle{font-size:13.5px;}
+    .case-note{max-width:560px;}
+    .tabbar{padding:0 30px; gap:10px;}
+    .tab{padding:14px 8px 12px; font-size:14.5px;}
+
+    /* 左欄＝輸入（固定寬，跨兩列）；右欄＝結果，下面接攤還明細 */
+    main{
+      padding:0 30px 18px;
+      display:grid;
+      grid-template-columns:440px minmax(0,1fr);
+      column-gap:26px;
+      align-items:start;
+    }
+    .col-left, .col-right, .col-full{display:block;}
+    .col-left {grid-column:1; grid-row:1 / span 2;}
+    .col-right{grid-column:2; grid-row:1;}
+    .col-full {grid-column:2; grid-row:2;}
+
+    .card, .results{padding:20px 20px;}
+    .stair-value .num{font-size:23px;}
+    #bonusBox .val{font-size:29px;}
+
+    /* 結果與獎金NPV 並排，讓上方更緊湊 */
+    .col-right{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:18px; align-items:start;}
+    #resultsBox{grid-column:1;}
+    #bonusBox{grid-column:2;}
+
+    table.sched{font-size:12px; min-width:0;}
+    table.sched td{padding:7px 9px;}
+    .sched-scroll{max-height:none;}
+    footer p{font-size:11px;}
+    .reset-btn{max-width:300px; margin-left:auto; margin-right:auto;}
+  }
+
+  /* 超寬螢幕再放大一點 */
+  @media (min-width:1500px){
+    .shell{max-width:1480px;}
+    main{grid-template-columns:480px minmax(0,1fr);}
+  }
+
 </style>
 </head>
 <body>
@@ -237,6 +313,7 @@
   </div>
 
   <main>
+    <div class="col-left">
     <div class="card">
       <div class="card-title"><span class="dot"></span>案件條件</div>
 
@@ -303,11 +380,30 @@
 
     <div class="card" id="forwardOnlyCard">
       <div class="card-title"><span class="dot"></span>每期還款金額（現金進出）</div>
-      <div class="field" style="margin-bottom:0">
-        <div class="input-wrap"><span class="prefix">NT$</span>
-          <input type="text" inputmode="numeric" id="payment" placeholder="58,500">
+
+      <div class="seg" id="pmtModeSeg">
+        <div class="seg-btn active" data-pm="single">單一金額</div>
+        <div class="seg-btn" data-pm="staged">分階段</div>
+      </div>
+
+      <div id="singlePmtWrap">
+        <div class="field" style="margin-bottom:0">
+          <div class="input-wrap"><span class="prefix">NT$</span>
+            <input type="text" inputmode="numeric" id="payment" placeholder="58,500">
+          </div>
+          <div class="hint">對應原表「現金進出」欄位，每期金額固定（等額攤還）。這裡填<strong>含稅</strong>金額，也就是公司系統的「期付款(含稅)」。</div>
         </div>
-        <div class="hint">對應原表「現金進出」欄位，每期金額固定（等額攤還）。這裡填<strong>含稅</strong>金額，也就是公司系統的「期付款(含稅)」。</div>
+      </div>
+
+      <div id="stagedPmtWrap" style="display:none">
+        <div class="stage-head">
+          <span>期數(起)</span><span>期數(迄)</span><span>每期還款(含稅)</span><span></span>
+        </div>
+        <div id="stageRows"></div>
+        <button type="button" class="stage-add" id="stageAdd">＋ 新增階段</button>
+        <div class="stage-summary" id="stageSummary">—</div>
+        <div class="stage-warn" id="stageWarn" style="display:none"></div>
+        <div class="hint">對應公司系統CFA006的「分期階段」表。填<strong>含稅</strong>金額，未稅由App換算顯示（跟系統的「期付款(未稅)」欄位一致，四捨五入到整數）。階段必須從第1期開始、連續不重疊、涵蓋到最後一期。</div>
       </div>
     </div>
 
@@ -341,6 +437,9 @@
       </div>
     </div>
 
+    </div><!-- /col-left -->
+
+    <div class="col-right">
     <div class="results" id="resultsBox">
       <div class="results-title">試算結果</div>
 
@@ -381,6 +480,9 @@
       </details>
     </div>
 
+    </div><!-- /col-right -->
+
+    <div class="col-full">
     <div class="sched-toggle" id="schedToggle">顯示每期攤還明細 ▾</div>
     <div class="sched-wrap" id="schedWrap">
       <div class="hint" style="margin-bottom:8px">第0期＝撥款日／起租日當天（尚未還款）；第1期起為每期攤還本息。</div>
@@ -397,6 +499,7 @@
     </div>
 
     <button class="reset-btn" id="resetBtn">清空重新輸入</button>
+    </div><!-- /col-full -->
   </main>
 
   <footer>
@@ -527,6 +630,47 @@ function buildBalloonSchedule({ principal, fee = 0, deposit = 0, periods, smallP
   return { netIRR, real1IRR, implied2IRR, I, J, L, balances, payments, balloon, openingPrincipal: principal, totalSales, arBalances };
 }
 
+// 分階段還款：每期金額由階段表給定（不等額）。
+// 這是 buildSchedule 的通用版，邏輯逐行對齊，差別只在 payment 換成 payments[i]。
+// ⚠️ 刻意不改寫 buildSchedule，讓等額攤還走原本那條路徑，確保既有結果一元不變。
+function buildStagedSchedule({ principal, fee = 0, deposit = 0, periods, payments, depositSpread = 0.030563, costOfFunds = 0 }){
+  const F9 = -principal;
+  const F = [F9]; for (let i = 0; i < periods; i++) F.push(payments[i]);
+  const netIRRmonthly = irrBisect(F);
+  const netIRR = netIRRmonthly === null ? null : netIRRmonthly * 12;
+
+  let Hprev = -F9;
+  const I = [], J = [];
+  for (let i = 0; i < periods; i++){
+    const interest = Hprev * (netIRR || 0) / 12;
+    const principalPaid = Math.round(payments[i] - interest);
+    Hprev = Hprev - payments[i] + interest;
+    I.push(principalPaid); J.push(interest);
+  }
+
+  const K9 = -principal + fee;
+  const O = [K9]; for (let i = 0; i < periods; i++) O.push(payments[i]);
+  const real1IRRmonthly = irrBisect(O);
+  const real1IRR = real1IRRmonthly === null ? null : real1IRRmonthly * 12;
+
+  const L = I.map(v => v > 0 ? deposit * (depositSpread - costOfFunds) / 12 : 0);
+  const Q = [K9]; for (let i = 0; i < periods; i++) Q.push(payments[i] + L[i]);
+  const implied2IRRmonthly = irrBisect(Q);
+  const implied2IRR = implied2IRRmonthly === null ? null : implied2IRRmonthly * 12;
+
+  const openingPrincipal = -F9;
+  let bal = openingPrincipal;
+  const balances = [];
+  for (let i = 0; i < periods; i++){ bal = bal - payments[i] + J[i]; balances.push(bal); }
+
+  const totalSales = payments.reduce((a, b) => a + b, 0);
+  let ar = totalSales;
+  const arBalances = [];
+  for (let i = 0; i < periods; i++){ ar = ar - payments[i]; arBalances.push(ar); }
+
+  return { netIRR, real1IRR, implied2IRR, I, J, L, balances, payments, openingPrincipal, totalSales, arBalances };
+}
+
 /* ============ 獎金NPV ============
    反推自公司系統CFA006，15組真實案例驗證，最大差3元（純四捨五入）。
 
@@ -655,6 +799,110 @@ $('periods').addEventListener('input', ()=>{
   document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.v === v));
 });
 
+// ---------- 分階段還款 ----------
+let pmtMode = 'single';
+let stages = [{ from:'', to:'', amt:'' }];
+
+function renderStageRows(){
+  const host = $('stageRows');
+  host.innerHTML = stages.map((st, i) => {
+    const amt = parseNum(st.amt);
+    const untaxed = amt ? `未稅 ${formatMoney(Math.round(amt / 1.05))}` : '';
+    return `<div class="stage-row" data-i="${i}">
+      <div class="sc"><input type="text" inputmode="numeric" data-f="from" value="${st.from}" placeholder="1"></div>
+      <div class="sc"><input type="text" inputmode="numeric" data-f="to" value="${st.to}" placeholder="8"></div>
+      <div class="sc amt"><input type="text" inputmode="numeric" data-f="amt" value="${st.amt}" placeholder="598,000"></div>
+      <button type="button" class="stage-del" data-del="${i}" title="刪除這個階段">✕</button>
+      <div class="stage-untaxed">${untaxed}</div>
+    </div>`;
+  }).join('');
+
+  host.querySelectorAll('input').forEach(el => {
+    const i = +el.closest('.stage-row').dataset.i, f = el.dataset.f;
+    el.addEventListener('input', () => { stages[i][f] = el.value; recalc(); });
+    if (f === 'amt'){
+      el.addEventListener('focus', () => { el.value = el.value.replace(/,/g,''); });
+      el.addEventListener('blur', () => {
+        const n = parseNum(el.value);
+        stages[i].amt = n ? formatMoney(n) : '';
+        renderStageRows(); recalc();
+      });
+    }
+  });
+  host.querySelectorAll('.stage-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (stages.length === 1){ stages = [{ from:'', to:'', amt:'' }]; }
+      else { stages.splice(+btn.dataset.del, 1); }
+      renderStageRows(); recalc();
+    });
+  });
+}
+
+// 讀階段表 → 展開成每期金額陣列，並檢查連續性
+function readStages(periods){
+  const rows = stages
+    .map(st => ({ from: Math.round(parseNum(st.from)), to: Math.round(parseNum(st.to)), amt: parseNum(st.amt) }))
+    .filter(r => r.from || r.to || r.amt);
+
+  if (!rows.length) return { ok:false, quiet:true };
+
+  for (const r of rows){
+    if (!r.from || !r.to || !r.amt) return { ok:false, quiet:true };
+    if (r.from < 1) return { ok:false, msg:'期數(起) 不能小於 1。' };
+    if (r.to < r.from) return { ok:false, msg:`有一段的期數(迄) ${r.to} 小於期數(起) ${r.from}。` };
+    if (r.to > periods) return { ok:false, msg:`有一段涵蓋到第 ${r.to} 期，超過總期數 ${periods} 期。` };
+    if (r.amt <= 0) return { ok:false, msg:'每期還款金額必須大於 0。' };
+  }
+
+  const sorted = rows.slice().sort((a, b) => a.from - b.from);
+  if (sorted[0].from !== 1) return { ok:false, msg:`階段必須從第 1 期開始（目前最早是第 ${sorted[0].from} 期）。` };
+  for (let i = 1; i < sorted.length; i++){
+    const prev = sorted[i-1], cur = sorted[i];
+    if (cur.from <= prev.to) return { ok:false, msg:`第 ${cur.from}~${prev.to} 期被兩個階段重複涵蓋。` };
+    if (cur.from !== prev.to + 1) return { ok:false, msg:`第 ${prev.to + 1}~${cur.from - 1} 期沒有被任何階段涵蓋。` };
+  }
+  const last = sorted[sorted.length - 1];
+  if (last.to !== periods) return { ok:false, msg:`階段只涵蓋到第 ${last.to} 期，總期數是 ${periods} 期，還差 ${periods - last.to} 期。` };
+
+  const payments = [];
+  for (const r of sorted) for (let i = r.from; i <= r.to; i++) payments[i-1] = r.amt;
+  return { ok:true, payments, rows: sorted };
+}
+
+function renderStageInfo(res, periods){
+  const warn = $('stageWarn'), sum = $('stageSummary');
+  if (res.ok){
+    warn.style.display = 'none';
+    const total = res.payments.reduce((a, b) => a + b, 0);
+    const lines = res.rows.map(r =>
+      `${String(r.from).padStart(2,' ')}~${String(r.to).padStart(2,' ')} 期　${formatMoney(r.amt)}　(未稅 ${formatMoney(Math.round(r.amt/1.05))})`
+    ).join('<br>');
+    sum.innerHTML = lines + `<br><b>期付款總額(含稅)：${formatMoney(total)}</b>`;
+  } else {
+    sum.innerHTML = '—';
+    if (res.quiet || !res.msg){ warn.style.display = 'none'; }
+    else { warn.style.display = 'block'; warn.textContent = res.msg; }
+  }
+}
+
+function setPmtMode(m){
+  pmtMode = m;
+  document.querySelectorAll('#pmtModeSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.pm === m));
+  $('singlePmtWrap').style.display = m === 'single' ? '' : 'none';
+  $('stagedPmtWrap').style.display = m === 'staged' ? '' : 'none';
+  recalc();
+}
+document.querySelectorAll('#pmtModeSeg .seg-btn').forEach(b => {
+  b.addEventListener('click', () => setPmtMode(b.dataset.pm));
+});
+$('stageAdd').addEventListener('click', () => {
+  const last = stages[stages.length - 1];
+  const nextFrom = last && parseNum(last.to) ? Math.round(parseNum(last.to)) + 1 : '';
+  stages.push({ from: nextFrom || '', to:'', amt:'' });
+  renderStageRows(); recalc();
+});
+renderStageRows();
+
 // tabs
 function setMode(m){
   mode = m;
@@ -686,7 +934,9 @@ $('resetBtn').addEventListener('click', ()=>{
   ['principal','fee','deposit','payment','targetNetIrr','caseNote','balloonSmallPmt','balloonNetIrr'].forEach(id=>$(id).value='');
   $('periods').value='';
   document.querySelectorAll('#periodChips .chip').forEach(c=>c.classList.remove('active'));
-  recalc();
+  stages = [{ from:'', to:'', amt:'' }];
+  renderStageRows();
+  setPmtMode('single');
 });
 
 function renderStair(netIRR, real1IRR, implied2IRR){
@@ -769,6 +1019,8 @@ function recalc(){
     renderStair(null,null,null);
     $('schedBody').innerHTML = '';
     $('bonusNpv').textContent = '—';
+    $('stageSummary').innerHTML = '—';
+    $('stageWarn').style.display = 'none';
     return;
   }
 
@@ -790,6 +1042,23 @@ function recalc(){
     renderSchedule(sched, periods, null);
     const bonusNpv = calcBonusNPV({ principal, fee, periods, payments: sched.payments, fundingCostAnnual, deposit });
     $('bonusNpv').textContent = 'NT$ ' + formatMoney(bonusNpv);
+    return;
+  }
+
+  if (mode === 'forward' && pmtMode === 'staged'){
+    const res = readStages(periods);
+    renderStageInfo(res, periods);
+    if (!res.ok){ renderStair(null,null,null); $('schedBody').innerHTML=''; $('bonusNpv').textContent='—'; return; }
+    sched = buildStagedSchedule({ principal, fee, deposit, periods, payments: res.payments, depositSpread, costOfFunds });
+    if (sched.netIRR === null || sched.real1IRR === null || sched.implied2IRR === null){
+      $('warnBox').style.display = 'block';
+      $('warnBox').textContent = '這組條件算不出收斂的 IRR，請檢查各階段金額是否合理。';
+      renderStair(null,null,null); $('bonusNpv').textContent='—'; return;
+    }
+    renderStair(sched.netIRR, sched.real1IRR, sched.implied2IRR);
+    renderSchedule(sched, periods, null);
+    const npvStaged = calcBonusNPV({ principal, fee, periods, payments: res.payments, fundingCostAnnual, deposit });
+    $('bonusNpv').textContent = 'NT$ ' + formatMoney(npvStaged);
     return;
   }
 
